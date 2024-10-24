@@ -93,7 +93,7 @@ def calculate_psnr(original, compressed):
 
 # Compression ratio calculation
 def calculate_compression_ratio(original_size, compressed_size):
-    return compressed_size / original_size
+    return original_size / compressed_size
 
 # Compress Image
 def compress_image(image, wavelet='haar', level=2, threshold=30):

@@ -206,7 +206,7 @@ def calculate_psnr(original, compressed):
 
 # Compression ratio calculation
 def calculate_compression_ratio(original_size, compressed_size):
-    return compressed_size / original_size
+    return original_size / compressed_size
 
 # Image Compression and Decompression Function
 def compress_and_decompress_streamlit(image_path, wavelet_type='haar', threshold=30):
