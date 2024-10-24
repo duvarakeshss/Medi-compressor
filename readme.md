@@ -11,7 +11,7 @@ This project implements image compression using wavelet transforms, specifically
 
 ## Requirements
 
-- Python 3.x
+- Python
 - Streamlit
 - NumPy
 - OpenCV
