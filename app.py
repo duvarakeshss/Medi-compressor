@@ -1,17 +1,15 @@
-import pywt
+import streamlit as st
 import numpy as np
+import pywt
 import cv2
-import time
 from skimage.metrics import peak_signal_noise_ratio as psnr
+import time
+from PIL import Image
 
-# Load image (grayscale)
-def load_image(path):
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    return img
-
-# Save the decompressed image
-def save_image(path, img):
-    cv2.imwrite(path, img)
+# Load image from user input
+def load_image_from_upload(image_file):
+    image = Image.open(image_file).convert('L')
+    return np.array(image)
 
 # Wavelet Decomposition and Thresholding
 def wavelet_decompose(img, wavelet='haar', level=2, threshold=30):
@@ -82,18 +80,23 @@ def inverse_wavelet_transform(coeffs, wavelet='haar'):
     return pywt.waverec2(coeffs, wavelet)
 
 # Performance Evaluation (PSNR)
+# Performance Evaluation (PSNR)
 def calculate_psnr(original, compressed):
+    # Ensure both images are of type uint8 and in range [0, 255]
+    original = original.astype(np.uint8)
+    compressed = np.clip(compressed, 0, 255).astype(np.uint8)
+
     if original.shape != compressed.shape:
         compressed = cv2.resize(compressed, (original.shape[1], original.shape[0]))  # Resizing to original shape if needed
+    
     return psnr(original, compressed)
 
 # Compression ratio calculation
 def calculate_compression_ratio(original_size, compressed_size):
     return compressed_size / original_size
 
-# Main Process Flow
-def compress_image(image_path, wavelet='haar', level=2, threshold=30):
-    image = load_image(image_path)
+# Compress Image
+def compress_image(image, wavelet='haar', level=2, threshold=30):
     original_size = image.size
     start_time = time.time()
     coeffs_thresh, coeffs = wavelet_decompose(image, wavelet=wavelet, level=level, threshold=threshold)
@@ -104,43 +107,51 @@ def compress_image(image_path, wavelet='haar', level=2, threshold=30):
     compression_time = time.time() - start_time
     return rle_encoded, shapes, coeffs, compression_ratio, compression_time
 
+# Decompress Image
 def decompress_image(rle_encoded, shapes, wavelet='haar'):
     decoded_coeffs = np.array(rle_decode(rle_encoded))
     rebuilt_coeffs = rebuild_coeffs(decoded_coeffs, shapes)
-    reconstructed_image = inverse_wavelet_transform(rebuilt_coeffs, wavelet=wavelet)
+    reconstructed_image = inverse_wavelet_transform(rebuilt_coeffs, wavelet)
     return reconstructed_image
 
-# Full compression and decompression test with performance metrics
-def compress_and_decompress(image_path, wavelet='haar', level=2, threshold=30):
-    rle_encoded, shapes, coeffs, compression_ratio, compression_time = compress_image(image_path, wavelet, level, threshold)
+# Compress and Decompress with performance metrics
+def compress_and_decompress(image, wavelet='haar', level=2, threshold=30):
+    rle_encoded, shapes, coeffs, compression_ratio, compression_time = compress_image(image, wavelet, level, threshold)
     start_time = time.time()
     decompressed_image = decompress_image(rle_encoded, shapes, wavelet)
     decompression_time = time.time() - start_time
-    original_image = load_image(image_path)
-    psnr_value = calculate_psnr(original_image, decompressed_image)
-    return compression_ratio, compression_time, decompression_time, psnr_value
+    
+    # Calculate PSNR between original and decompressed images
+    psnr_value = calculate_psnr(image, decompressed_image)
+    
+    # Normalize the decompressed image to be in the range [0, 255]
+    decompressed_image = np.clip(decompressed_image, 0, 255)  # Clip values to be within [0, 255]
+    decompressed_image = decompressed_image.astype(np.uint8)   # Convert to uint8
 
-# Compare wavelets
-def compare_wavelets(image_path, output_image_path, wavelets, level=2, threshold=30):
-    results = {}
-    for wavelet in wavelets:
-        print(f"Processing with wavelet: {wavelet}")
-        compression_ratio, compression_time, decompression_time, psnr_value = compress_and_decompress(image_path, wavelet, level, threshold)
-        results[wavelet] = {
-            "Compression Ratio": compression_ratio,
-            "Compression Time": compression_time,
-            "Decompression Time": decompression_time,
-            "PSNR": psnr_value
-        }
-        print(f"Wavelet: {wavelet}")
-        print(f"Compression Ratio: {compression_ratio}")
-        print(f"Compression Time: {compression_time:.4f} seconds")
-        print(f"Decompression Time: {decompression_time:.4f} seconds")
-        print(f"PSNR: {psnr_value:.4f} dB")
-    return results
+    return decompressed_image, compression_ratio, compression_time, decompression_time, psnr_value
 
-# Example Usage
-image_path = 'C:\\Users\\Duvar\\Downloads\\test2.jpg'
-output_image_path = 'decompressed_image.jpg'
-wavelets = ['haar', 'db2', 'bior1.3']  # Haar, Daubechies (db2), Biorthogonal (bior1.3)
-compare_wavelets(image_path, output_image_path, wavelets, level=2, threshold=30)
+# Streamlit App
+st.title("Wavelet-based Image Compression and Decompression")
+
+# Upload Image
+uploaded_file = st.file_uploader("Choose an image...", type="jpg")
+
+if uploaded_file is not None:
+    # Load Image
+    image = load_image_from_upload(uploaded_file)
+    st.image(image, caption="Original Image", use_column_width=True)
+
+    wavelets = ['haar', 'db2', 'bior1.3']
+
+    # Compress and Decompress with each wavelet
+    cols = st.columns(3)  # Create three columns for displaying images
+    for i, wavelet in enumerate(wavelets):
+        decompressed_image, compression_ratio, compression_time, decompression_time, psnr_value = compress_and_decompress(image, wavelet)
+        
+        # Display each image in its column
+        with cols[i]:
+            st.image(decompressed_image, caption=f"Reconstructed Image - {wavelet}", use_column_width=True)
+            st.write(f"Compression Ratio: {compression_ratio:.4f}")
+            st.write(f"Compression Time: {compression_time:.4f} seconds")
+            st.write(f"Decompression Time: {decompression_time:.4f} seconds")
+            st.write(f"PSNR: {psnr_value:.4f} dB")
