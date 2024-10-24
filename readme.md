@@ -18,12 +18,13 @@ This project implements image compression using wavelet transforms, specifically
 - scikit-image
 - Pillow
 
-You can install the required packages using pip:
+##### You can install the required packages using pip:
 
 ```bash
 pip install streamlit numpy opencv-python scikit-image Pillow
 ```
-How to Run the Application
+
+### How to Run the Application
 
 ```bash
 git clone https://github.com/yourusername/image-compression-wavelet.git
