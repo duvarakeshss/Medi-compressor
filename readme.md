@@ -28,6 +28,6 @@ pip install streamlit numpy opencv-python scikit-image Pillow
 
 ```bash
 git clone https://github.com/duvarakeshss/WaveletWhiz
-cd image-compression-wavelet
+cd WaveletWhiz
 streamlit run app.py
 ```
